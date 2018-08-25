@@ -117,4 +117,10 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="label4.Text" xml:space="preserve">
+    <value>This project is not optimized for the quickest outcomes of path navigation. Ideally a heap would be used, but this project rather uses a list for simplicity sake. Visualizations will also affect travel speeds. Typically A* will outperform BFS with proper optimization.</value>
+  </data>
+  <metadata name="VisualizationSpeedUpdate.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 17</value>
+  </metadata>
 </root>

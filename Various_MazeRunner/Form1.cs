@@ -18,28 +18,54 @@ namespace Various_MazeRunner
 
     public partial class Form1 : Form
     {
+        //Stores values of settings when maze was last run.
+        private class LastSettingsValues
+        {
+            public LastSettingsValues(bool allowDiagonalMovement, bool doNotCrossCorners)
+            {
+                _allowDiagonalMovement = allowDiagonalMovement;
+                _doNotCrossCorners = doNotCrossCorners;
+            }
+
+            private readonly bool _allowDiagonalMovement;
+            private readonly bool _doNotCrossCorners;
+
+            public bool SettingsChanged(bool allowDiagonalMovement, bool doNotCrossCorners)
+            {
+                if (allowDiagonalMovement != _allowDiagonalMovement
+                    || doNotCrossCorners != _doNotCrossCorners)
+                    return true;
+                else
+                    return false;
+            }
+        }
         /* StopWatch is used to track precise intervals.
          * It's being used to determine how fast the search
          * is. */
-        private Stopwatch StopWatch = new Stopwatch();
+        private Stopwatch _stopWatch = new Stopwatch();
         //Contains our grid of nodes.
         private Node[,] Nodes;
         //Contains visuals for our grid.
-        private NodeVisual[,] NodeVisuals = null;
+        private NodeVisual[,] _nodeVisuals = null;
         //width and height of each NodeVisual.
         public int NodeVisualSize { get; private set; }
         //Columns and rows of grid
-        private int Columns { get; set; }
-        private int Rows { get; set; }
+        private int _columns { get; set; }
+        private int _rows { get; set; }
         //Start and End of the maze.
-        private Node Start { get; set; }
-        private Node End { get; set; }
+        private Node _start { get; set; }
+        private Node _end { get; set; }
         //Used for displaying information about the maze in results.
-        private int OpenNodes;
-        private int ClosedNodes;
+        private int _openNodes;
+        private int _closedNodes;
         //Instance of search used to run the maze.
-        private Search Search = null;
-
+        private Search _search = null;
+        //Text loaded from maze file.
+        private string _mazeText = string.Empty;
+        //Last settings when grid was built.
+        private LastSettingsValues _lastSettingsValues = null;
+        //Last setting on visualization speed when update timer ticked. Lazy method of reading form controls in a background thread.
+        private int _visualizationSpeed = 0;
         //Called when form is initialized.
         public Form1()
         {
@@ -49,29 +75,29 @@ namespace Various_MazeRunner
         private void BuildMazeGrid(ref string maze)
         {
             //Reset information about maze grid.
-            Columns = 0;
-            Rows = 0;
-            OpenNodes = 0;
-            ClosedNodes = 0;
+            _columns = 0;
+            _rows = 0;
+            _openNodes = 0;
+            _closedNodes = 0;
             Nodes = null;
-            Start = null;
-            End = null;
+            _start = null;
+            _end = null;
 
             //Break maze into a string array by splitting carriage returns, while removing empty entries.
             string[] mazeLines = maze.Split(new string[] { "\n", "\r\n" }, StringSplitOptions.None);
             //Calculate largest column size for maze
             for (int i = 0; i < mazeLines.Length; i++)
             {
-                Columns = Math.Max(mazeLines[i].Length, Columns);
+                _columns = Math.Max(mazeLines[i].Length, _columns);
             }
             //set rows to length of maze
-            Rows = mazeLines.Length;
+            _rows = mazeLines.Length;
 
             //Create NodeVisual objects after determining grid size.
             ResetNodeVisuals();
 
             //Initialize Nodes to size of maze grid
-            Nodes = new Node[Columns, Rows];
+            Nodes = new Node[_columns, _rows];
 
             //Hide to reduce redraws.
             //NodeVisualsPanel.Visible = false;
@@ -82,14 +108,14 @@ namespace Various_MazeRunner
             Coordinates endCoordinates = null;
 
             //First populate the Nodes grid with each 
-            for (int row = 0; row < Rows; row++)
+            for (int row = 0; row < _rows; row++)
             {
                 //Pad the right of our string with char 0 to fill expected column count.
-                string line = mazeLines[row].PadRight(Columns, (char)0);
+                string line = mazeLines[row].PadRight(_columns, (char)0);
 
                 /* Read each char from 0 to our column count in line.
                  * Since we padded line to match column count, this won't cause errors. */
-                for (int column = 0; column < Columns; column++)
+                for (int column = 0; column < _columns; column++)
                 {
 
                     //Store char data for easy reading
@@ -115,13 +141,13 @@ namespace Various_MazeRunner
                     }
 
                     if (closed)
-                        ClosedNodes++;
+                        _closedNodes++;
                     else
-                        OpenNodes++;
+                        _openNodes++;
 
                     //Create a new node visual and assign it to Nodevisuals column and row.
                     NodeVisual nodeVisual = new NodeVisual(this, coordinates, NodeVisualSize, closed, NodeVisualsPanel);
-                    NodeVisuals[column, row] = nodeVisual;
+                    _nodeVisuals[column, row] = nodeVisual;
                     //Create a new node and assign it to our Nodes grid using current column and row.
                     Node node = new Node(coordinates, closed, nodeVisual);
                     Nodes[column, row] = node;
@@ -131,20 +157,20 @@ namespace Various_MazeRunner
             //Set the Start node using coordinates.
             if (startCoordinates != null)
             { 
-                Start = Nodes[startCoordinates.Column, startCoordinates.Row];
-                Start.NodeVisual.ColorNodeVisual(Color.Green);
+                _start = Nodes[startCoordinates.Column, startCoordinates.Row];
+                _start.NodeVisual.ColorNodeVisual(Color.Green);
             }
             //Set the End node using coordinates.
             if (endCoordinates != null)
             { 
-                End = Nodes[endCoordinates.Column, endCoordinates.Row];
-                End.NodeVisual.ColorNodeVisual(Color.BlueViolet);
+                _end = Nodes[endCoordinates.Column, endCoordinates.Row];
+                _end.NodeVisual.ColorNodeVisual(Color.BlueViolet);
             }
 
             //Cycle through all nodes in our grid to find their neighboring nodes.
-            for (int column = 0; column < Columns; column++)
+            for (int column = 0; column < _columns; column++)
             {
-                for (int row = 0; row < Rows; row++)
+                for (int row = 0; row < _rows; row++)
                 {
                     //Assign to a local variable to make the code easier to read.
                     Node node = Nodes[column, row];
@@ -178,7 +204,7 @@ namespace Various_MazeRunner
                 Coordinates neighborCoordinates = new Coordinates(stepA, stepB);
 
                 //If neighborCoordinates are out of grid bounds skip this neighbor
-                if (neighborCoordinates.Column < 0 || neighborCoordinates.Row < 0 || neighborCoordinates.Column >= Columns || neighborCoordinates.Row >= Rows)
+                if (neighborCoordinates.Column < 0 || neighborCoordinates.Row < 0 || neighborCoordinates.Column >= _columns || neighborCoordinates.Row >= _rows)
                     continue;
 
                 //Assign the neighbor node as the specified neighborCoordinates
@@ -207,7 +233,7 @@ namespace Various_MazeRunner
                     Coordinates neighborCoordinates = new Coordinates(stepA, stepB);
 
                     //If neighborCoordinates are out of grid bounds skip this neighbor
-                    if (neighborCoordinates.Column < 0 || neighborCoordinates.Row < 0 || neighborCoordinates.Column >= Columns || neighborCoordinates.Row >= Rows)
+                    if (neighborCoordinates.Column < 0 || neighborCoordinates.Row < 0 || neighborCoordinates.Column >= _columns || neighborCoordinates.Row >= _rows)
                         continue;
 
                     if (dontCrossCorners)
@@ -250,7 +276,7 @@ namespace Various_MazeRunner
                     break;
             }
 
-            Search = new Search(Nodes, Start, End, searchAlgorithm);
+            _search = new Search(Nodes, _start, _end, searchAlgorithm);
             /* Loop until StepMaze returns true.
              * Returning true indicates that the maze search is over
              * but not necessarily that a solution was found. */
@@ -261,15 +287,13 @@ namespace Various_MazeRunner
             //Create a new thread
             BackgroundWorker backgroundWorker = new BackgroundWorker();
 
-            int visualizationSpeed = VisualizationSpeedTrackbar.Value;
-
             backgroundWorker.DoWork += (sender, args) =>
             {
-                while (!Search.Finished)
+                while (!_search.Finished)
                 {
-                    Search.StepSearch();
-                    if (visualizationSpeed > 0)
-                    Thread.Sleep(visualizationSpeed);
+                    _search.StepSearch();
+                    if (_visualizationSpeed > 0)
+                        Thread.Sleep(_visualizationSpeed);
                 }
             };
             /* Set time taken to complete search. The value
@@ -282,15 +306,17 @@ namespace Various_MazeRunner
                 if (args.Error != null) 
                     Debug.Print(args.Error.ToString());
 
+                VisualizationSpeedUpdate.Enabled = false;
+
                 //If the FoundPath count is 0, a path could not be found.
-                if (Search.FoundPath.Count == 0)
+                if (_search.FoundPath.Count == 0)
                 {
                     Debug.Print("A path could not be found. Time " + stopwatch.ElapsedMilliseconds.ToString() + "ms.");
                 }
                 //If the FoundPath is greater than 0, a path has been found.
                 else
                 {
-                    ColorFoundPath(Search.FoundPath);
+                    ColorFoundPath(_search.FoundPath);
                 }
 
                 //Search has ended, allow another search.
@@ -313,9 +339,9 @@ namespace Various_MazeRunner
             {
                 Node node = foundPath[i];
                 //Color node in found path based on node type.
-                if (node == Start)
+                if (node == _start)
                     node.NodeVisual.ColorNodeVisual(Color.Green);
-                else if (node == End)
+                else if (node == _end)
                     node.NodeVisual.ColorNodeVisual(Color.BlueViolet);
                 else
                     node.NodeVisual.ColorNodeVisual(Color.Aqua);
@@ -327,9 +353,9 @@ namespace Various_MazeRunner
          * end location has changed. */
         private void ResetNodes()
         {
-            for (int column = 0; column < Columns; column++)
+            for (int column = 0; column < _columns; column++)
             {
-                for (int row = 0; row < Rows; row++)
+                for (int row = 0; row < _rows; row++)
                 {
                     Node node = Nodes[column, row];
                     //Only need to reset if not a closed node.
@@ -338,9 +364,9 @@ namespace Various_MazeRunner
                         //Call reset on node.
                         node.Reset();
                         //Color back to original color.
-                        if (node == Start)
+                        if (node == _start)
                             node.NodeVisual.ColorNodeVisual(Color.Green);
-                        else if (node == End)
+                        else if (node == _end)
                             node.NodeVisual.ColorNodeVisual(Color.BlueViolet);
                         else
                             node.NodeVisual.ColorNodeVisual(Color.White);
@@ -366,11 +392,11 @@ namespace Various_MazeRunner
                 StreamReader streamReader = new StreamReader(fileDialog.FileName);
                 //Append the entire text into a string builder
                 //MazeText.Append(streamReader.ReadToEnd());
-                string maze = streamReader.ReadToEnd();
+                _mazeText = streamReader.ReadToEnd();
                 //Close the stream reader, then begin running the maze.
                 streamReader.Close();
                 //Builds maze grid using text from file.
-                BuildMazeGrid(ref maze);
+                BuildMazeGrid(ref _mazeText);
             }
             //Enable button to load another maze
             LoadMazeButton.Enabled = true;
@@ -382,12 +408,12 @@ namespace Various_MazeRunner
         private void ResetNodeVisuals()
         {
             //Exit method if rows or columns are zero. Cannot make a grid without each being at least 1.
-            if (Columns == 0 || Rows == 0)
+            if (_columns == 0 || _rows == 0)
                 return;
 
             //Determine size of each nodevisual.
-            double itemWidth = (NodeVisualsPanel.Width) / Columns;
-            double itemHeight = (NodeVisualsPanel.Height) / Rows;
+            double itemWidth = (NodeVisualsPanel.Width) / _columns;
+            double itemHeight = (NodeVisualsPanel.Height) / _rows;
 
             //Set NodeVisualSize to the smallest axis so it doesn't overflow.
             if (itemHeight < itemWidth)
@@ -396,7 +422,7 @@ namespace Various_MazeRunner
                 NodeVisualSize = Convert.ToInt32(Math.Floor(itemHeight));
 
             //Reset Node visuals to new grid size.
-            NodeVisuals = new NodeVisual[Columns, Rows];
+            _nodeVisuals = new NodeVisual[_columns, _rows];
         }
 
         //Handle clicks on the node visual panel to set start and end location.
@@ -409,7 +435,7 @@ namespace Various_MazeRunner
                 return;
 
             //Don't try to calculate position when a grid hasnt been generated.
-            if (Columns == 0 || Rows == 0)
+            if (_columns == 0 || _rows == 0)
                 return;
 
             //Determine column and row at click location.
@@ -417,7 +443,7 @@ namespace Various_MazeRunner
             int row = (e.Y / NodeVisualSize);
 
             //If invalid click location or grid isnt builr.
-            if (Columns == 0 || Rows == 0 || column > Columns || row > Rows || column < 0 || row < 0)
+            if (_columns == 0 || _rows == 0 || column > _columns || row > _rows || column < 0 || row < 0)
             {
                 Debug.Print("Grid isn't built or selected point is out of bounds. Cannot continue.");
                 return;
@@ -437,20 +463,20 @@ namespace Various_MazeRunner
             if (e.Button == MouseButtons.Left)
             {
                 //If start is already specified reset its color to white
-                if (Start != null)
-                    Start.NodeVisual.ColorNodeVisual(Color.White);
+                if (_start != null)
+                    _start.NodeVisual.ColorNodeVisual(Color.White);
                 //Assign new start and color it.
-                Start = node;
+                _start = node;
                 node.NodeVisual.ColorNodeVisual(Color.Green);
             }
             //If right button set as end.
             else if (e.Button == MouseButtons.Right)
             {
                 //If end is already specified reset its color to white
-                if (End != null)
-                    End.NodeVisual.ColorNodeVisual(Color.White);
+                if (_end != null)
+                    _end.NodeVisual.ColorNodeVisual(Color.White);
                 //Assign new end and color it.
-                End = node;
+                _end = node;
                 node.NodeVisual.ColorNodeVisual(Color.BlueViolet);
             }
 
@@ -460,15 +486,28 @@ namespace Various_MazeRunner
         //Called when Start Search is clicked
         private void StartSearchButton_Click(object sender, EventArgs e)
         {
-            if (Start == null || End == null)
+            if (_start == null || _end == null)
             {
                 Debug.Print("Start or End is null. Left click maze to set Start, right click to set End.");
                 return;
             }
+
+            SetVisualizationSpeed();
             //Disable start and load maze button and enable cancel.
             StartSearchButton.Enabled = false;
             LoadMazeButton.Enabled = false;
             CancelSearchButton.Enabled = true;
+
+            bool allowDiag = AllowDiagonalCheckbox.Checked;
+            bool dontCrossCorners = DontCrossCornersCheckbox.Checked;
+            //If grid needs to be rebuilt due to settings change.
+            if (_lastSettingsValues == null
+                || _lastSettingsValues.SettingsChanged(allowDiag, dontCrossCorners))
+                BuildMazeGrid(ref _mazeText);
+            //Make a new last settings value.
+            _lastSettingsValues = new LastSettingsValues(allowDiag, dontCrossCorners);
+            
+            VisualizationSpeedUpdate.Enabled = true;
             //Travel maze
             TraverseMaze();
         }
@@ -476,8 +515,8 @@ namespace Various_MazeRunner
         //Cancels searching and reenables controls.
         private void ResetSearchButton_Click(object sender, EventArgs e)
         {
-            if (Search != null)
-                Search.Finished = true;
+            if (_search != null)
+                _search.Finished = true;
 
             //Disable cancel button and enable start and load maze
             StartSearchButton.Enabled = true;
@@ -492,6 +531,18 @@ namespace Various_MazeRunner
             SearchAlgorithmCombo.Items.Add("Breadth First Search");
             SearchAlgorithmCombo.Items.Add("A* Search");
             SearchAlgorithmCombo.SelectedIndex = 1;
+        }
+
+
+        private void VisualizationSpeedUpdate_Tick(object sender, EventArgs e)
+        {
+            SetVisualizationSpeed();
+        }
+
+        //Sets visualization speed to the slider value.
+        private void SetVisualizationSpeed()
+        {
+            _visualizationSpeed = VisualizationSpeedTrackbar.Value;
         }
     }
 

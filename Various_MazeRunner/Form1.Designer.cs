@@ -28,6 +28,8 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.LoadMazeButton = new System.Windows.Forms.Button();
             this.NodeVisualsPanel = new System.Windows.Forms.Panel();
             this.StartSearchButton = new System.Windows.Forms.Button();
@@ -40,6 +42,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
+            this.VisualizationSpeedUpdate = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.VisualizationSpeedTrackbar)).BeginInit();
             this.SuspendLayout();
             // 
@@ -111,7 +114,7 @@
             this.AllowDiagonalCheckbox.ForeColor = System.Drawing.Color.Black;
             this.AllowDiagonalCheckbox.Location = new System.Drawing.Point(671, 279);
             this.AllowDiagonalCheckbox.Name = "AllowDiagonalCheckbox";
-            this.AllowDiagonalCheckbox.Size = new System.Drawing.Size(169, 19);
+            this.AllowDiagonalCheckbox.Size = new System.Drawing.Size(149, 17);
             this.AllowDiagonalCheckbox.TabIndex = 9;
             this.AllowDiagonalCheckbox.Text = "Allow Diagonal Movement";
             this.AllowDiagonalCheckbox.UseVisualStyleBackColor = true;
@@ -124,7 +127,7 @@
             this.DontCrossCornersCheckbox.ForeColor = System.Drawing.Color.Black;
             this.DontCrossCornersCheckbox.Location = new System.Drawing.Point(670, 304);
             this.DontCrossCornersCheckbox.Name = "DontCrossCornersCheckbox";
-            this.DontCrossCornersCheckbox.Size = new System.Drawing.Size(144, 19);
+            this.DontCrossCornersCheckbox.Size = new System.Drawing.Size(128, 17);
             this.DontCrossCornersCheckbox.TabIndex = 10;
             this.DontCrossCornersCheckbox.Text = "Do Not Cross Corners";
             this.DontCrossCornersCheckbox.UseVisualStyleBackColor = true;
@@ -132,10 +135,11 @@
             // VisualizationSpeedTrackbar
             // 
             this.VisualizationSpeedTrackbar.Location = new System.Drawing.Point(668, 198);
+            this.VisualizationSpeedTrackbar.Maximum = 60;
             this.VisualizationSpeedTrackbar.Name = "VisualizationSpeedTrackbar";
-            this.VisualizationSpeedTrackbar.Size = new System.Drawing.Size(262, 50);
+            this.VisualizationSpeedTrackbar.Size = new System.Drawing.Size(262, 45);
             this.VisualizationSpeedTrackbar.TabIndex = 11;
-            this.VisualizationSpeedTrackbar.Value = 5;
+            this.VisualizationSpeedTrackbar.Value = 30;
             // 
             // label1
             // 
@@ -143,7 +147,7 @@
             this.label1.ForeColor = System.Drawing.Color.Black;
             this.label1.Location = new System.Drawing.Point(668, 175);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(180, 15);
+            this.label1.Size = new System.Drawing.Size(155, 13);
             this.label1.TabIndex = 12;
             this.label1.Text = "Visualization Speed (fast - slow)";
             // 
@@ -170,12 +174,16 @@
             // 
             this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 10.18868F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label4.ForeColor = System.Drawing.Color.Black;
-            this.label4.Location = new System.Drawing.Point(665, 597);
+            this.label4.Location = new System.Drawing.Point(665, 529);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(271, 63);
+            this.label4.Size = new System.Drawing.Size(271, 131);
             this.label4.TabIndex = 15;
-            this.label4.Text = "Algorithms are not optimized for speed, but rather to demonstrate how they work.";
+            this.label4.Text = resources.GetString("label4.Text");
             this.label4.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            // 
+            // VisualizationSpeedUpdate
+            // 
+            this.VisualizationSpeedUpdate.Tick += new System.EventHandler(this.VisualizationSpeedUpdate_Tick);
             // 
             // Form1
             // 
@@ -219,6 +227,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Timer VisualizationSpeedUpdate;
     }
 }
 
